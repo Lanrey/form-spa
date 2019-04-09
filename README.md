@@ -1,8 +1,5 @@
 # form-spa
 
-<<<<<<< HEAD
-Added files 
-=======
 This is an spa for cpu utilization calculation. 
 
 No framework is used because an spa is basically an application that rewrites data without needing a refresh.
@@ -14,4 +11,3 @@ a refresh.
 url: https://form-plus-spa.herokuapp.com/index.html
 
 Index.php was used to serve as a server so I could push to heroku
->>>>>>> dev
