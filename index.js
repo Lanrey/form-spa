@@ -1,86 +1,95 @@
-const api = 'http://localhost:3000';
 
-document.addEventListener("DOMContentLoaded", function(event){
-  fetch(api)
-  .then(function(response){
-    console.log(response)
-  })
-});
+function drawChart(data) {
 
-
+// set margins //
 const margin = { top: 20, right: 20, bottom: 30, left: 40};
 const width = 960 - margin.left - margin.right;
 const height = 500 - margin.top - margin.bottom;
 
-// create x axis //
-let x = d3
-          .scaleLinear()
-          .range([0, width])
-          //.domain([0, 100])
-          //.padding(0.1);
 
-// create y axis
-
-let y = d3.scaleLinear()
-        .range([height, 0])
-        .domain([0, 100]);
-
-// create second axis for y1 //
-
-let y1 = d3.scaleLinear()
-         .range([height, 0]);
-
-//append container the container to the graph //
-
+// create container //
 const container = d3.select('body')
                     .append('div')
                     .attr('class', 'container');
 
 container.append('h1').text("Cpu Utilization Charts");
 
-const svg = container
+
+// attach to svg //
+
+let svg = container
    .append('svg')
    .attr('width', width + margin.left + margin.right)
    .attr('height', height + margin.top + margin.bottom)
-   .append('g')
-   .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
 
+let g = svg.append('g')
+          .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+   // create x-axis //
 
-   const tip = d3
-   .select('body')
-   .append('div')
-   .attr('class', 'tooltip');
+   let x = d3
+          .scaleLinear()
+          .rangeRound([0, width]);
+
+   // create y-axis //
+
+   let y = d3
+          .scaleLinear()
+          .rangeRound([height, 0]);
+  
+
+  //draw line
+   let line = d3.line()
+             .x(function(d) { return x(d.seconds) })
+             .y(function(d) { return y(d.cputime) })
+             x.domain(d3.extent(data, function(d) { return d.seconds }))
+             y.domain(d3.extent(data, function(d) {
+               return d.cputime
+             }))
+             
+
+  g.append("g")
+    .attr("transform", "translate(0," + height +")")
+    .call(d3.axisBottom(x))
+    .select(".domain")
+    .remove()
+
+  g.append("g")
+    .call(d3.axisLeft(y))
+    .append("text")
+    .attr("fill", "#000")
+    .attr("transform", "rotate(-90)")
+    .attr("y", 6)
+    .attr("dy", "0.71em")
+    .attr("text-anchor", "end")
+    //.text("Seconds");
+
+  g.append("path")
+    .datum(data)
+    .attr("fill", "none")
+    .attr("stroke", "steelblue")
+    //.attr("stroke-linejoin", "round")
+    //.attr("stroke-linecap", "round")
+    //.attr("stroke-width", 1.5)
+    .attr("d", line)
+       
+
+}
 
 
 fetch('http://localhost:3000')
   .then(response => response.json())
   .then(cpu => {
+    const chartData = processDataset(cpu);
 
-    //add the x-axis
+    drawChart(chartData);
+    //update(cpu);
 
-    /*svg
-    .append('g')
-    .attr('transform', 'translate(0,' + height + ')')
-    .attr('class', 'x-axis')
-    .call(d3.axisBottom(x));
-    
-
-    //add the y-axis
-    svg
-     .append('g')
-     .attr('class', 'y-axis')
-     .call(d3.axisLeft(y));
-    */
-  
-
-     update(cpu);
   });
 
+  // process dataset coming from endpoint //
+  function processDataset(cpu) {
 
-  function update(cpu){
-
-    // clean and transform the data coming from the api //
-    let dataValues = {}
+    let dataValues = []
     const keys = Object.keys(cpu.computation);
 
     for (key in keys){
@@ -90,98 +99,40 @@ fetch('http://localhost:3000')
         avgtime: item['core-%-avg-utilization']
       }));
 
-      dataValues[key] = transformedData;
+      dataValues.push(transformedData);
     }
 
-    x.domain(
-      d3.extent(dataValues[0], d => d.seconds)
-    )
-    svg
-     .append('g')
-     .attr('transform', 'translate(0,' + height + ')')
-     .attr('class', 'x-axis')
-     .call(d3.axisBottom(x));
+    //console.log(dataValues[0]);
 
-    y.domain([0, d3.max(dataValues[0], d => d.cputime)])
-    svg
-     .append('g')
-     .attr('class', 'y-axis')
-     .call(d3.axisLeft(y));
-
-     y1.domain([0, d3.max(dataValues[0], d => d.avgtime)])
-
-
-     svg.append("path")
-      .datum(dataValues[0])
-      .attr("fill", "none")
-      .attr("stroke", "steelblue")
-      .attr("stroke-width", 1.5)
-      .attr("d", d3.line()
-        .x(function(d) { return x(d.seconds) })
-        .y(function(d) { return y(d.cputime) })
-        //.y1(function(d) { return y1(d.avgtime)})
-        )
-
-    
-    /*svg
-     .selectAll('.line')
-     .remove()
-     .exit()
-     .append('path')
-     .data(dataValues[0])
-     .enter()
-     //.append('line')
-     .attr('class', 'line')
-     .attr("d", d3.line()
-      .x(function(d) { return x(d.seconds)})
-      .y(function(d) { return y(d.cputime)})
-     )
-     .attr('x', d => {
-       return x(d.seconds);
-     })
-     .attr('width', x.bandwidth())
-     .attr('y', d => {
-       return y(d.cputime)
-     })
-     .attr('height', d => {
-       return height - y(d.cputime)
-     })
-     */
-     .on('mousemove', d => {
-       tip
-        .style('postion', 'absolute')
-        .style('left', `${d3.event.pageX + 10}px`)
-        .style('top', `${d3.event.pageY + 20}px`)
-        .style('display', 'inline-block')
-        .style('opacity', '0.9')
-        .html(
-          `<div><strong>${d.seconds}</strong></div> <span>${d.cputime} cpu</span>`
-        );
-     })
-
-     .on('mouseout', () => tip.style('display', 'none'));
-
-     svg.select('.x-axis').call(d3.axisBottom(x));
-
-     // update the y-axis
-     svg.select('.y-axis').call(d3.axisLeft(y));
-      
-    
-
+  let finalData = [];
+  for (count in dataValues){
+    for (test in dataValues[count]){
+      finalData.push(dataValues[count][test])
+    }
   }
+
+  return finalData;
+}
+
+  //Update UI//
+  function updateUI(data){
+    drawChart(data)
+  }
+
+  Pusher.logToConsole = true;
 
   // pusher for real time updates //
   const pusher = new Pusher('972bc911e2d469152d3a', {
     cluster: 'eu',
-    encrypted: true,
+    forceTLS: true,
   });
 
   const channel = pusher.subscribe('cpu-channel');
   channel.bind('update-cpu', data => {
-    update(data.computation);
+    console.log(data)
+    updateUI(data);
   });
 
-
-
-
-
+  channel.bind('pusher:subscription_succeeded', function(members) {
+    console.log('successfully subscribed!');
+  });
