@@ -1,12 +1,3 @@
-const api = 'http://localhost:3000';
-
-document.addEventListener("DOMContentLoaded", function(event){
-  fetch(api)
-  .then(function(response){
-    console.log(response)
-  })
-});
-
 
 const margin = { top: 20, right: 20, bottom: 30, left: 40};
 const width = 960 - margin.left - margin.right;
@@ -28,7 +19,8 @@ let y = d3.scaleLinear()
 // create second axis for y1 //
 
 let y1 = d3.scaleLinear()
-         .range([height, 0]);
+         .range([height, 0])
+         .range([0, 50])
 
 //append container the container to the graph //
 
@@ -44,12 +36,15 @@ const svg = container
    .attr('height', height + margin.top + margin.bottom)
    .append('g')
    .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+  
 
-
+  
    const tip = d3
    .select('body')
    .append('div')
    .attr('class', 'tooltip');
+
+  
 
 
 fetch('http://localhost:3000')
@@ -58,29 +53,44 @@ fetch('http://localhost:3000')
 
     //add the x-axis
 
-    /*svg
+    /*
+
+    svg
     .append('g')
     .attr('transform', 'translate(0,' + height + ')')
     .attr('class', 'x-axis')
     .call(d3.axisBottom(x));
     
-
     //add the y-axis
     svg
      .append('g')
      .attr('class', 'y-axis')
      .call(d3.axisLeft(y));
-    */
-  
-
      update(cpu);
+
+     */
+    update(cpu);
   });
+
+  //Process dataset //
+
+  function processData(dataset) {
+    dataset.forEach(function(d){
+      d.forEach(function (d) {
+        //console.log(d);
+        d.seconds = +d.seconds;
+        d.cputime = +d.cputime;
+        d.avgtime = +d.avgtime;
+      });
+    });
+
+    return dataset
+  }
 
 
   function update(cpu){
-
     // clean and transform the data coming from the api //
-    let dataValues = {}
+    let dataValues = []
     const keys = Object.keys(cpu.computation);
 
     for (key in keys){
@@ -90,8 +100,70 @@ fetch('http://localhost:3000')
         avgtime: item['core-%-avg-utilization']
       }));
 
-      dataValues[key] = transformedData;
+      dataValues.push(transformedData);
     }
+
+
+    let xAxis = d3.axisBottom(x)
+
+    let yAxisLeft = d3.axisLeft(y)
+
+    let yAxisRight = d3.axisRight(y1);
+
+    let cpuLine = d3.line()
+                  .x(function(d) {return x(d.seconds)})
+                  .y(function(d) {return y(d.cputime)})
+
+    let avgCpuLine = d3.line()
+                     .x(function(d) { return x(d.seconds) })
+                     .y(function(d) { return y1(d.avgtime) });
+
+
+
+    x.domain(d3.extent(processData(dataValues), function(d) { return d.seconds }));
+
+    svg.append("g")            // Add the X Axis
+    .attr("class", "x axis")
+    .attr("transform", "translate(0," + height + ")")
+    .call(xAxis);
+
+    y.domain([0, d3.max(processData(dataValues), function(d){
+        return Math.max(d.cputime);
+    })]);
+
+    svg.append("g")
+    .attr("class", "y-axis")
+    .call(yAxisLeft);	
+
+    y1.domain([0, d3.max(processData(dataValues), function(d){
+      return Math.max(d.avgtime)
+    })]);
+
+    svg.append("g")				
+      .attr("class", "y-axis")	
+      .attr("transform", "translate(" + width + ",0)")		
+      .call(yAxisRight);
+
+    svg.selectAll(".line")
+      .data(processData(dataValues))
+      .enter().append("path")
+      .attr("d", cpuLine(processData(dataValues)))
+
+    svg.append("path")
+      //.style("stroke", "red")
+      .attr("d", avgCpuLine(processData(dataValues)));
+
+      //Add the X-axis
+
+
+
+
+    //console.log(dataValues)
+
+    
+    /*
+
+
 
     x.domain(
       d3.extent(dataValues[0], d => d.seconds)
@@ -111,8 +183,11 @@ fetch('http://localhost:3000')
      y1.domain([0, d3.max(dataValues[0], d => d.avgtime)])
 
 
-     svg.append("path")
-      .datum(dataValues[0])
+     svg
+      .selectAll('.line')
+      .append("path")
+      .data([dataValues[1]])
+      .enter()
       .attr("fill", "none")
       .attr("stroke", "steelblue")
       .attr("stroke-width", 1.5)
@@ -146,8 +221,8 @@ fetch('http://localhost:3000')
      .attr('height', d => {
        return height - y(d.cputime)
      })
-     */
-     .on('mousemove', d => {
+     
+    // .on('mousemove', d => {
        tip
         .style('postion', 'absolute')
         .style('left', `${d3.event.pageX + 10}px`)
@@ -167,7 +242,7 @@ fetch('http://localhost:3000')
      svg.select('.y-axis').call(d3.axisLeft(y));
       
     
-
+*/
   }
 
   // pusher for real time updates //
@@ -178,10 +253,5 @@ fetch('http://localhost:3000')
 
   const channel = pusher.subscribe('cpu-channel');
   channel.bind('update-cpu', data => {
-    update(data.computation);
+    update(data);
   });
-
-
-
-
-
