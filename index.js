@@ -4,23 +4,23 @@ const width = 960 - margin.left - margin.right;
 const height = 500 - margin.top - margin.bottom;
 
 // create x axis //
-let x = d3
+const x = d3
           .scaleLinear()
           .range([0, width])
-          //.domain([0, 100])
-          //.padding(0.1);
+          .domain([0, 100])
 
 // create y axis
 
-let y = d3.scaleLinear()
+const y = d3.scaleLinear()
         .range([height, 0])
-        .domain([0, 100]);
+        .domain([0, 100])
+
 
 // create second axis for y1 //
 
-let y1 = d3.scaleLinear()
+const y1 = d3.scaleLinear()
          .range([height, 0])
-         .range([0, 50])
+         .domain([0, 50])
 
 //append container the container to the graph //
 
@@ -30,7 +30,7 @@ const container = d3.select('body')
 
 container.append('h1').text("Cpu Utilization Charts");
 
-const svg = container
+var svg = container
    .append('svg')
    .attr('width', width + margin.left + margin.right)
    .attr('height', height + margin.top + margin.bottom)
@@ -50,11 +50,7 @@ const svg = container
 fetch('https://form-plus-express-api.appspot.com/')
   .then(response => response.json())
   .then(cpu => {
-
     //add the x-axis
-
-    /*
-
     svg
     .append('g')
     .attr('transform', 'translate(0,' + height + ')')
@@ -66,10 +62,14 @@ fetch('https://form-plus-express-api.appspot.com/')
      .append('g')
      .attr('class', 'y-axis')
      .call(d3.axisLeft(y));
-     update(cpu);
 
-     */
-    update(cpu);
+     //add the second y-axis
+     svg.append("g")				
+     .attr("class", "y-axis")	
+     .attr("transform", "translate(" + width + ",0)")		
+     .call(d3.axisRight(y1));
+
+     update(cpu);
   });
 
   //Process dataset //
@@ -118,36 +118,15 @@ fetch('https://form-plus-express-api.appspot.com/')
                      .x(function(d) { return x(d.seconds) })
                      .y(function(d) { return y1(d.avgtime) });
 
-
-
-    x.domain(d3.extent(processData(dataValues), function(d) { return d.seconds }));
-
-    svg.append("g")            // Add the X Axis
-    .attr("class", "x axis")
-    .attr("transform", "translate(0," + height + ")")
-    .call(xAxis);
-
-    y.domain([0, d3.max(processData(dataValues), function(d){
-        return Math.max(d.cputime);
-    })]);
-
-    svg.append("g")
-    .attr("class", "y-axis")
-    .call(yAxisLeft);	
-
-    y1.domain([0, d3.max(processData(dataValues), function(d){
-      return Math.max(d.avgtime)
-    })]);
-
-    svg.append("g")				
-      .attr("class", "y-axis")	
-      .attr("transform", "translate(" + width + ",0)")		
-      .call(yAxisRight);
+    //svg.append("g")				
+     // .attr("class", "y-axis")	
+     // .attr("transform", "translate(" + width + ",0)")		
+     // .call(yAxisRight);
 
     svg.selectAll(".line")
       .data(processData(dataValues))
       .enter().append("path")
-      .attr("d", cpuLine(processData(dataValues)))
+      .attr("d", cpuLine(dataValues[0]))
 
     svg.append("path")
       //.style("stroke", "red")
